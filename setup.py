@@ -20,4 +20,3 @@ Operating System :: OS Independent
 Programming Language :: Python
 Topic :: Software Development :: Libraries
 """)
-
