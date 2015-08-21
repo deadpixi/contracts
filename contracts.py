@@ -105,15 +105,15 @@ All of the various calling conventions of Python are supported:
     >>> @require("`a` is an integer", lambda: isinstance(a, int))
     ... @require("`b` is a string", lambda: isinstance(b, str))
     ... @require("every member of `c` should be a boolean", lambda: all(isinstance(x, bool) for x in c))
-    ... def func(a, *c, b="Foo"):
+    ... def func(a, b="Foo", *c):
     ...     pass
 
-    >>> func(1, True, True, False, b="foo")
+    >>> func(1, "foo", True, True, False)
     >>> func(b="Foo", a=18)
     >>> args = {"a": 8, "b": "foo"}
     >>> func(**args)
-    >>> args = (1, True, True, False)
-    >>> func(*args, b="bar")
+    >>> args = (1, "foo", True, True, False)
+    >>> func(*args)
 
 Contracts on Classes
 ====================
