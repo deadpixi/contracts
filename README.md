@@ -10,7 +10,7 @@ and on classes.
 
 Contracts serve as a form of documentation and a way of formally specifying
 program behavior.  Good practice often includes writing all of the contracts
-first, with these contract specifying the exact expected state before and
+first, with these contracts specifying the exact expected state before and
 after each function or method call and the things that should always be
 true for a given class of object.
 
