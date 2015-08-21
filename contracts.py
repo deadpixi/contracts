@@ -312,7 +312,7 @@ def invariant(description, predicate):
 
         for name, value in [(name, getattr(c, name)) for name in dir(c)]:
             if callable(value) and not isinstance(value, type):
-                if name in ("__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__") or not name.startswith("__"):
+                if name in ("__getitem__", "__setitem__", "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__") or not name.startswith("__"):
                     setattr(Wrapper, name, condition(description, predicate, name != "__init__", True, True)(value))
         return Wrapper
     return invariant
