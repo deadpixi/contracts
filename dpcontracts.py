@@ -196,6 +196,28 @@ Contracts are a documentation and testing tool; they are not intended
 to be used to validate user input or implement program logic.  Indeed,
 running Python with `__debug__` set to False (e.g. by calling the Python
 intrepreter with the "-O" option) disables contracts.
+
+Testing This Module
+===================
+This module has embedded doctests that are run with the module is invoked
+from the command line.  Simply run the module directly to run the tests.
+
+Contact Information and Licensing
+=================================
+This module was written by Rob King (jking@deadpixi.com).
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 __all__ = ["ensure", "invariant", "require"]
