@@ -3,7 +3,7 @@
 from distutils.core import setup
 import dpcontracts
 
-setup(name="contracts",
+setup(name="dpcontracts",
       version="0.1.0",
       author="Rob King",
       author_email="jking@deadpixi.com",
