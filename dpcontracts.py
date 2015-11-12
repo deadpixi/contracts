@@ -82,7 +82,7 @@ Except that the function is broken in unexpected ways:
 The function specifying the condition doesn't have to be a lambda; it can be
 any function, and pre- and postconditions don't have to actually reference
 the arguments or results of the function at all.  They can simply check
-that the function's environments and effects:
+the function's environments and effects:
 
     >>> names = set()
     >>> def exists_in_database(x):
@@ -91,7 +91,7 @@ that the function's environments and effects:
     ... @require("`name` must not already be in the database", lambda: not exists_in_database(name.strip()))
     ... @ensure("the normalized version of the name must be added to the database", lambda: exists_in_database(name.strip()))
     ... def add_to_database(name):
-    ...     if name not in names:
+    ...     if name not in names and name != "Rob": # intentionally broken
     ...         names.add(name.strip())
 
     >>> add_to_database("James")
@@ -99,6 +99,9 @@ that the function's environments and effects:
     >>> add_to_database("Marvin")
     Traceback (most recent call last):
     AssertionError: `name` must not already be in the database
+    >>> add_to_database("Rob")
+    Traceback (most recent call last):
+    AssertionError: the normalized version of the name must be added to the database
 
 All of the various calling conventions of Python are supported:
 
