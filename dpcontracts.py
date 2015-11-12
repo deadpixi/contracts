@@ -143,7 +143,7 @@ In this case, "always" means "before invocation of any method and after
 its return" -- methods are allowed to violate invariants so long as they
 are restored prior to return.
 
-The special name `__invariant__` is set to a reference to the instance
+The special name `__instance__` is set to a reference to the instance
 variable in question.  For example:
 
     >>> @invariant("inner list can never be empty", lambda: len(__instance__.lst) > 0)
