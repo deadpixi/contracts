@@ -258,7 +258,7 @@ def build_call(f, *args, **kwargs):
     named, vargs, varkw, defs, kwonly, kwonlydefs, _ = getfullargspec(f)
 
     nonce = object()
-    actual = {name: nonce for name in named}
+    actual = dict((name, nonce) for name in named)
 
     defs = defs or [] 
     kwonlydefs = kwonlydefs or {}
