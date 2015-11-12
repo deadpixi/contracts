@@ -308,7 +308,6 @@ def condition(description, predicate, precondition=False, postcondition=False, m
         return inner
     return require
 
-
 def require(description, predicate):
     """
     Specify a precondition described by `description` and tested by
@@ -344,19 +343,19 @@ def invariant(description, predicate):
 
 if not __debug__:
     def require(description, predicate):
-        def require(f):
+        def func(f):
             return f
-        return require
+        return func
 
     def ensure(description, predicate):
-        def ensure(f):
+        def func(f):
             return f
-        return ensure
+        return func
 
     def invariant(description, predicate):
-        def invariant(c):
+        def func(c):
             return c
-        return invariant
+        return func
 
 if __name__ == "__main__":
     import doctest
