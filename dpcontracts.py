@@ -62,7 +62,8 @@ function arguments are also available.  For example:
 
     >>> @require("`i` must be a positive integer", lambda: isinstance(i, int) and i > 0)
     ... @require("`j` must be a positive integer", lambda: isinstance(j, int) and j > 0)
-    ... @ensure("the result must be greater than either `i` or `j`", lambda: __result__ > i and __result__ > j)
+    ... @ensure("the result must be greater than either `i` or `j`",
+    ...         lambda: __result__ > i and __result__ > j)
     ... def add2(i, j):
     ...     if i == 7:
     ...        i = -7 # intentionally broken for purposes of example
@@ -88,8 +89,10 @@ the function's environments and effects:
     >>> def exists_in_database(x):
     ...   return x in names
     >>> @require("`name` must be a string", lambda: isinstance(name, str))
-    ... @require("`name` must not already be in the database", lambda: not exists_in_database(name.strip()))
-    ... @ensure("the normalized version of the name must be added to the database", lambda: exists_in_database(name.strip()))
+    ... @require("`name` must not already be in the database",
+    ...          lambda: not exists_in_database(name.strip()))
+    ... @ensure("the normalized version of the name must be added to the database",
+    ...         lambda: exists_in_database(name.strip()))
     ... def add_to_database(name):
     ...     if name not in names and name != "Rob": # intentionally broken
     ...         names.add(name.strip())
@@ -329,7 +332,8 @@ def build_call(f, *args, **kwargs):
 
 def condition(description, predicate, precondition=False, postcondition=False, method=False):
     assert isinstance(description, str) and len(description) > 0
-    assert isinstance(predicate, FunctionType) and hasattr(predicate, "__code__") and hasattr(predicate, "__globals__")
+    assert isinstance(predicate, FunctionType)
+    assert hasattr(predicate, "__code__") and hasattr(predicate, "__globals__")
     assert precondition or postcondition
 
     def require(f):
@@ -375,7 +379,9 @@ def types(**requirements):
             assert name in values, "missing required argument `%s`" % name
             if not isinstance(kind, tuple):
                 kind = (kind,)
-            assert any(isinstance(values[name], k) or (k is None and values[name] is None) for k in kind), "type of `%s` must be valid" % name
+            assert any(isinstance(values[name], k) or \
+                       (k is None and values[name] is None) for k in kind), \
+                       "type of `%s` must be valid" % name
     return condition("the types of arguments must be valid", predicate, True, False)
 
 def ensure(description, predicate):
@@ -398,8 +404,10 @@ def invariant(description, predicate):
 
         for name, value in [(name, getattr(c, name)) for name in dir(c)]:
             if callable(value) and not isinstance(value, type):
-                if name in ("__getitem__", "__setitem__", "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__") or not name.startswith("__"):
-                    setattr(Wrapper, name, condition(description, predicate, name != "__init__", True, True)(value))
+                if name in ("__getitem__", "__setitem__", "__lt__", "__le__", "__eq__",
+                            "__ne__", "__gt__", "__ge__") or not name.startswith("__"):
+                    setattr(Wrapper, name, condition(description, predicate, name != "__init__",
+                                                     True, True)(value))
         return Wrapper
     return invariant
 
