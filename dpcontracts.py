@@ -117,6 +117,32 @@ All of the various calling conventions of Python are supported:
     >>> func(**args)
     >>> args = (1, "foo", True, True, False)
     >>> func(*args)
+    >>> args = {"a": 8}
+    >>> func(**args)
+    >>> func(1)
+
+A common contract is to validate the types of arguments. To that end,
+there is an additional decorator, `types`, that can be used
+to validate arguments' types:
+
+    >>> class ExampleClass:
+    ...     pass
+
+    >>> @types(a=int, b=(str, unicode), c=(ExampleClass, None))
+    ... @require("a must be nonzero", lambda: a != 0)
+    ... def func(a, b, c=38):
+    ...     print " ".join([a, b])
+
+    >>> func(1, "foo", ExampleClass())
+    1 "foo"
+
+    >>> func(1.0, "foo", ExampleClass)
+    Traceback (most recent call last):
+    AssertionError: type of `a` must be valid
+
+    >>> func(1, "foo")
+    Traceback (most recent call last):
+    AssertionError: type of `c` must be valid
 
 Contracts on Classes
 ====================
@@ -192,6 +218,27 @@ all of the invariants will be tested again:
     >>> nl = NonemptyList([1,2,3])
     >>> nl.as_string() == '1,2,3'
     True
+
+Note that there is a slight difference in the handling of accessing the
+instance variable in methods versus invariants. In invariants, the special
+`__instance__` variable is required, but in methods, one can simply use
+the first argument:
+
+    >>> class AnotherExampleClass:
+    ...     def __init__(self):
+    ...         self._list = []
+    ...
+    ...     @require("x can't already appear in the list", lambda: x not in self._list)
+    ...     @ensure("x has been added to the list", lambda: x in self._list)
+    ...     def add(self, x):
+    ...         self._list.append(x)
+
+    >>> c = AnotherExampleClass()
+    >>> c.add(1)
+    >>> c.add(2)
+    >>> c.add(1)
+    Traceback (most recent call last):
+    AssertionError: x can't already appear in the list
 
 Contracts and Debugging
 =======================
@@ -315,6 +362,21 @@ def require(description, predicate):
     """
 
     return condition(description, predicate, True, False)
+
+def types(**requirements):
+    """
+    Specify a precondition based on the types of the function's
+    arguments.
+    """
+
+    def predicate():
+        values = locals().copy()
+        for name, kind in requirements.items():
+            assert name in values, "missing required argument `%s`" % name
+            if not isinstance(kind, tuple):
+                kind = (kind,)
+            assert any(isinstance(values[name], k) or (k is None and values[name] is None) for k in kind), "type of `%s` must be valid" % name
+    return condition("the types of arguments must be valid", predicate, True, False)
 
 def ensure(description, predicate):
     """
