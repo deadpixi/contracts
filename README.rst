@@ -247,8 +247,7 @@ from the command line.  Simply run the module directly to run the tests.
 
 Contact Information and Licensing
 =================================
-This module has a home page at GitHub:
-`https://github.com/deadpixi/contracts`_.
+This module has a home page at `GitHub <https://github.com/deadpixi/contracts>`_.
 
 This module was written by Rob King (jking@deadpixi.com).
 
