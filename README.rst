@@ -11,7 +11,7 @@ be specified on functions and on classes.
 
 Contracts serve as a form of documentation and a way of formally
 specifying program behavior.  Good practice often includes writing all of
-the contracts first, with these contract specifying the exact expected
+the contracts first, with these contracts specifying the exact expected
 state before and after each function or method call and the things that
 should always be true for a given class of object.
 
@@ -27,7 +27,7 @@ Preconditions and Postconditions
 Contracts on functions consist of preconditions and postconditions.
 A precondition is declared using the `requires` decorator, and describes
 what must be true upon entrance to the function. The condition function
-is passed an arguments object, which as as its attributes the arguments
+is passed an arguments object, which has as its attributes the arguments
 to the decorated function:
 
     >>> @require("`i` must be an integer", lambda args: isinstance(args.i, int))
@@ -83,7 +83,7 @@ Except that the function is broken in unexpected ways:
 The function specifying the condition doesn't have to be a lambda; it can be
 any function, and pre- and postconditions don't have to actually reference
 the arguments or results of the function at all.  They can simply check
-the function's environments and effects:
+the function's environment and effects:
 
     >>> names = set()
     >>> def exists_in_database(x):
@@ -213,18 +213,18 @@ instance of the class. For example:
 
 Violations of invariants are ignored in the following situations:
 
-    - before calls to __init__ and __new__ (since the object is still
-      being initialized)
+- before calls to __init__ and __new__ (since the object is still
+  being initialized)
 
-    - before and after calls to any method whose name begins with "__",
-      except for methods implementing arithmetic and comparison operations
-      and container type emulation (because such methods are private and
-      expected to manipulate the object's inner state, plus things get hairy
-      with certain applications of `__getattr(ibute)?__`)
+- before and after calls to any method whose name begins with "__",
+  except for methods implementing arithmetic and comparison operations
+  and container type emulation (because such methods are private and
+  expected to manipulate the object's inner state, plus things get hairy
+  with certain applications of `__getattr(ibute)?__`)
 
-    - before and after calls to methods added from outside the initial
-      class definition (because invariants are processed only at class
-      definition time)
+- before and after calls to methods added from outside the initial
+  class definition (because invariants are processed only at class
+  definition time)
 
 Also note that if a method invokes another method on the same object,
 all of the invariants will be tested again:
