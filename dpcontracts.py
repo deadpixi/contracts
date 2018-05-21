@@ -345,7 +345,7 @@ __status__ = "Alpha"
 
 from collections import namedtuple
 from functools import wraps
-from inspect import isfunction
+from inspect import isfunction, ismethod
 
 
 try:
@@ -494,8 +494,17 @@ def invariant(description, predicate):
         class InvariantContractor(c):
             pass
 
+        def check(f):
+            if ismethod(f):
+                return True # Python 2
+            elif isfunction(f):
+                if getattr(f, "__self__", None) is c:
+                    return False
+                return True
+            return False
+
         for name, value in [(name, getattr(c, name)) for name in dir(c)]:
-            if callable(value) and not isinstance(value, type) and not isfunction(value):
+            if check(value):
                 if name in ("__getitem__", "__setitem__", "__lt__", "__le__", "__eq__",
                             "__ne__", "__gt__", "__ge__", "__init__") or not name.startswith("__"):
                     setattr(InvariantContractor, name,
