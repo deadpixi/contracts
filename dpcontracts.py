@@ -236,6 +236,73 @@ all of the invariants will be tested again:
     >>> nl.as_string() == '1,2,3'
     True
 
+Transforming Data in Contracts
+==============================
+In general, you should avoid transforming data inside a contract; contracts
+themselves are supposed to be side-effect-free.
+
+However, this is not always possible in Python.
+
+Take, for example, iterables passed as arguments. We might want to verify
+that a given set of properties hold for every item in the iterable. The
+obvious solution would be to do something like this:
+
+    >>> @require("every item in `l` must be > 0", lambda args: all(x > 0 for x in args.l))
+    ... def my_func(l):
+    ...     return sum(l)
+
+This works well in most situations:
+
+    >>> my_func([1, 2, 3])
+    6
+    >>> my_func([0, -1, 2])
+    Traceback (most recent call last):
+    AssertionError: every item in `l` must be > 0
+
+But it fails in the case of a generator:
+
+    >>> def iota(n):
+    ...     for i in range(1, n):
+    ...         yield i
+
+    >>> sum(iota(5))
+    10
+    >>> my_func(iota(5))
+    0
+
+The call to `my_func` has a result of 0 because the generator was consumed
+inside the `all` call inside the contract. Obviously, this is problematic.
+
+Sadly, there is no generic solution to this problem. In a statically-typed
+language, the compiler can verify that some properties of infinite lists
+(though not all of them, and what exactly depends on the type system).
+
+We get around that limitation here using an additional decorator, called
+`transform` that transforms the arguments to a function, and a function
+called `rewrite` that rewrites argument tuples.
+
+For example:
+
+    >>> @transform(lambda args: rewrite(args, l=list(args.l)))
+    ... @require("every item in `l` must be > 0", lambda args: all(x > 0 for x in args.l))
+    ... def my_func(l):
+    ...     return sum(l)
+    >>> my_func(iota(5))
+    10
+
+Note that this does not completely solve the problem of infinite sequences,
+but it does allow for verification of any desired prefix of such a sequence.
+
+This works for class methods too, of course:
+
+    >>> class TestClass:
+    ...     @transform(lambda args: rewrite(args, l=list(args.l)))
+    ...     @require("every item in `l` must be > 0", lambda args: all(x > 0 for x in args.l))
+    ...     def my_func(self, l):
+    ...         return sum(l)
+    >>> TestClass().my_func(iota(5))
+    10
+
 Contracts and Debugging
 =======================
 Contracts are a documentation and testing tool; they are not intended
@@ -268,7 +335,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-__all__ = ["ensure", "invariant", "require"]
+__all__ = ["ensure", "invariant", "require", "transform", "rewrite"]
 __author__ = "Rob King"
 __copyright__ = "Copyright (C) 2015-2016 Rob King"
 __license__ = "LGPL"
@@ -371,6 +438,23 @@ def require(description, predicate):
 
     return condition(description, predicate, True, False)
 
+def rewrite(args, **kwargs):
+    return args._replace(**kwargs)
+
+def transform(transformer):
+    assert isinstance(transformer, FunctionType), "transformers must be functions"
+    assert arg_count(transformer) == 1, "transformers can only take a single argument"
+
+    def func(f):
+        wrapped = get_wrapped_func(f)
+
+        @wraps(f)
+        def inner(*args, **kwargs):
+            rargs = transformer(build_call(f, *args, **kwargs))
+            return f(**(rargs._asdict()))
+        return inner
+    return func
+
 def types(**requirements):
     """
     Specify a precondition based on the types of the function's
@@ -430,6 +514,11 @@ if not __debug__:
         return func
 
     def invariant(description, predicate):
+        def func(c):
+            return c
+        return func
+
+    def transform(transformer):
         def func(c):
             return c
         return func

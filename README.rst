@@ -11,7 +11,7 @@ be specified on functions and on classes.
 
 Contracts serve as a form of documentation and a way of formally
 specifying program behavior.  Good practice often includes writing all of
-the contracts first, with these contracts specifying the exact expected
+the contracts first, with these contract specifying the exact expected
 state before and after each function or method call and the things that
 should always be true for a given class of object.
 
@@ -27,7 +27,7 @@ Preconditions and Postconditions
 Contracts on functions consist of preconditions and postconditions.
 A precondition is declared using the `requires` decorator, and describes
 what must be true upon entrance to the function. The condition function
-is passed an arguments object, which has as its attributes the arguments
+is passed an arguments object, which as as its attributes the arguments
 to the decorated function:
 
     >>> @require("`i` must be an integer", lambda args: isinstance(args.i, int))
@@ -83,7 +83,7 @@ Except that the function is broken in unexpected ways:
 The function specifying the condition doesn't have to be a lambda; it can be
 any function, and pre- and postconditions don't have to actually reference
 the arguments or results of the function at all.  They can simply check
-the function's environment and effects:
+the function's environments and effects:
 
     >>> names = set()
     >>> def exists_in_database(x):
@@ -213,18 +213,18 @@ instance of the class. For example:
 
 Violations of invariants are ignored in the following situations:
 
-- before calls to __init__ and __new__ (since the object is still
-  being initialized)
+    - before calls to __init__ and __new__ (since the object is still
+      being initialized)
 
-- before and after calls to any method whose name begins with "__",
-  except for methods implementing arithmetic and comparison operations
-  and container type emulation (because such methods are private and
-  expected to manipulate the object's inner state, plus things get hairy
-  with certain applications of `__getattr(ibute)?__`)
+    - before and after calls to any method whose name begins with "__",
+      except for methods implementing arithmetic and comparison operations
+      and container type emulation (because such methods are private and
+      expected to manipulate the object's inner state, plus things get hairy
+      with certain applications of `__getattr(ibute)?__`)
 
-- before and after calls to methods added from outside the initial
-  class definition (because invariants are processed only at class
-  definition time)
+    - before and after calls to methods added from outside the initial
+      class definition (because invariants are processed only at class
+      definition time)
 
 Also note that if a method invokes another method on the same object,
 all of the invariants will be tested again:
@@ -232,6 +232,73 @@ all of the invariants will be tested again:
     >>> nl = NonemptyList([1,2,3])
     >>> nl.as_string() == '1,2,3'
     True
+
+Transforming Data in Contracts
+==============================
+In general, you should avoid transforming data inside a contract; contracts
+themselves are supposed to be side-effect-free.
+
+However, this is not always possible in Python.
+
+Take, for example, iterables passed as arguments. We might want to verify
+that a given set of properties hold for every item in the iterable. The
+obvious solution would be to do something like this:
+
+    >>> @require("every item in `l` must be > 0", lambda args: all(x > 0 for x in args.l))
+    ... def my_func(l):
+    ...     return sum(l)
+
+This works well in most situations:
+
+    >>> my_func([1, 2, 3])
+    6
+    >>> my_func([0, -1, 2])
+    Traceback (most recent call last):
+    AssertionError: every item in `l` must be > 0
+
+But it fails in the case of a generator:
+
+    >>> def iota(n):
+    ...     for i in range(1, n):
+    ...         yield i
+
+    >>> sum(iota(5))
+    10
+    >>> my_func(iota(5))
+    0
+
+The call to `my_func` has a result of 0 because the generator was consumed
+inside the `all` call inside the contract. Obviously, this is problematic.
+
+Sadly, there is no generic solution to this problem. In a statically-typed
+language, the compiler can verify that some properties of infinite lists
+(though not all of them, and what exactly depends on the type system).
+
+We get around that limitation here using an additional decorator, called
+`transform` that transforms the arguments to a function, and a function
+called `rewrite` that rewrites argument tuples.
+
+For example:
+
+    >>> @transform(lambda args: rewrite(args, l=list(args.l)))
+    ... @require("every item in `l` must be > 0", lambda args: all(x > 0 for x in args.l))
+    ... def my_func(l):
+    ...     return sum(l)
+    >>> my_func(iota(5))
+    10
+
+Note that this does not completely solve the problem of infinite sequences,
+but it does allow for verification of any desired prefix of such a sequence.
+
+This works for class methods too, of course:
+
+    >>> class TestClass:
+    ...     @transform(lambda args: rewrite(args, l=list(args.l)))
+    ...     @require("every item in `l` must be > 0", lambda args: all(x > 0 for x in args.l))
+    ...     def my_func(self, l):
+    ...         return sum(l)
+    >>> TestClass().my_func(iota(5))
+    10
 
 Contracts and Debugging
 =======================
