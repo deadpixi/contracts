@@ -345,7 +345,6 @@ __status__ = "Alpha"
 
 from collections import namedtuple
 from functools import wraps
-from types import FunctionType
 from inspect import isfunction
 
 
@@ -403,7 +402,7 @@ def arg_count(func):
 def condition(description, predicate, precondition=False, postcondition=False, instance=False):
     assert isinstance(description, str), "contract descriptions must be strings"
     assert len(description) > 0, "contracts must have nonempty descriptions"
-    assert isinstance(predicate, FunctionType), "contract predicates must be functions"
+    assert isfunction(predicate), "contract predicates must be functions"
     assert precondition or postcondition, "contracts must be at least one of pre- or post-conditional"
     assert arg_count(predicate) == (1 if precondition or instance else 2), \
            "contract predicates must take the correct number of arguments"
@@ -444,7 +443,7 @@ def rewrite(args, **kwargs):
     return args._replace(**kwargs)
 
 def transform(transformer):
-    assert isinstance(transformer, FunctionType), "transformers must be functions"
+    assert isfunction(transformer), "transformers must be functions"
     assert arg_count(transformer) == 1, "transformers can only take a single argument"
 
     def func(f):
