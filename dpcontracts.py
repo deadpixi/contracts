@@ -346,6 +346,8 @@ __status__ = "Alpha"
 from collections import namedtuple
 from functools import wraps
 from types import FunctionType
+from inspect import ismethod
+
 
 try:
     from inspect import getfullargspec
@@ -376,7 +378,7 @@ def build_call(func, *args, **kwargs):
     nonce = object()
     actual = dict((name, nonce) for name in named)
 
-    defs = defs or () 
+    defs = defs or ()
     kwonlydefs = kwonlydefs or {}
 
     actual.update(kwonlydefs)
@@ -405,7 +407,7 @@ def condition(description, predicate, precondition=False, postcondition=False, i
     assert precondition or postcondition, "contracts must be at least one of pre- or post-conditional"
     assert arg_count(predicate) == (1 if precondition or instance else 2), \
            "contract predicates must take the correct number of arguments"
-    
+
     def require(f):
         wrapped = get_wrapped_func(f)
 
@@ -494,7 +496,7 @@ def invariant(description, predicate):
             pass
 
         for name, value in [(name, getattr(c, name)) for name in dir(c)]:
-            if callable(value) and not isinstance(value, type):
+            if callable(value) and not isinstance(value, type) and not ismethod(value):
                 if name in ("__getitem__", "__setitem__", "__lt__", "__le__", "__eq__",
                             "__ne__", "__gt__", "__ge__", "__init__") or not name.startswith("__"):
                     setattr(InvariantContractor, name,
