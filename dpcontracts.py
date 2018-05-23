@@ -507,29 +507,35 @@ def ensure(description, predicate):
 
     return condition(description, predicate, False, True)
 
-def invariant(description, predicate):
+def invariant(desc, predicate):
     """
     Specify a class invariant described by `descriptuon` and tested
     by `predicate`.
     """
 
     def invariant(c):
+        def check(name, func):
+            exceptions = ("__getitem__", "__setitem__", "__lt__", "__le__", "__eq__",
+                          "__ne__", "__gt__", "__ge__", "__init__")
+
+            if name.startswith("__") and name.endswith("__") and name not in exceptions:
+                return False
+
+            if not ismethod(func) and not isfunction(func):
+                return False
+
+            if getattr(func, "__self__", None) is c:
+                return False
+
+            return True
+
         class InvariantContractor(c):
             pass
 
-        def check(f):
-            if ismethod(f) or isfunction(f):
-                if getattr(f, "__self__", None) is c:
-                    return False
-                return True
-            return False
-
         for name, value in [(name, getattr(c, name)) for name in dir(c)]:
-            if check(value):
-                if name in ("__getitem__", "__setitem__", "__lt__", "__le__", "__eq__",
-                            "__ne__", "__gt__", "__ge__", "__init__") or not name.startswith("__"):
-                    setattr(InvariantContractor, name,
-                            condition(description, predicate, name != "__init__", True, True)(value))
+            if check(name, value):
+                setattr(InvariantContractor, name,
+                        condition(desc, predicate, name != "__init__", True, True)(value))
         return InvariantContractor
     return invariant
 
