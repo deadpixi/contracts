@@ -4,7 +4,7 @@ from distutils.core import setup
 import dpcontracts
 
 setup(name="dpcontracts",
-      version="0.2.0",
+      version="0.3.0",
       author="Rob King",
       author_email="jking@deadpixi.com",
       url="https://github.com/deadpixi/contracts",
