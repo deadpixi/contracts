@@ -232,6 +232,27 @@ Violations of invariants are ignored in the following situations:
     - before and after calls to classmethods, since they apply to the class
       as a whole and not any particular instance
 
+For example:
+
+    >>> @invariant("`always` should be True", lambda self: self.always)
+    ... class Foo:
+    ...     always = True
+    ...
+    ...     def get_always(self):
+    ...         return self.always
+    ...
+    ...     @classmethod
+    ...     def break_everything(cls):
+    ...         cls.always = False
+
+    >>> x = Foo()
+    >>> x.get_always()
+    True
+    >>> x.break_everything()
+    >>> x.get_always()
+    Traceback (most recent call last):
+    AssertionError: `always` should be True
+
 Also note that if a method invokes another method on the same object,
 all of the invariants will be tested again:
 
@@ -349,7 +370,6 @@ __status__ = "Alpha"
 from collections import namedtuple
 from functools import wraps
 from inspect import isfunction, ismethod
-
 
 try:
     from inspect import getfullargspec
@@ -498,9 +518,7 @@ def invariant(description, predicate):
             pass
 
         def check(f):
-            if ismethod(f):
-                return True # Python 2
-            elif isfunction(f):
+            if ismethod(f) or isfunction(f):
                 if getattr(f, "__self__", None) is c:
                     return False
                 return True
