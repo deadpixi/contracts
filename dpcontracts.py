@@ -470,8 +470,6 @@ def transform(transformer):
     assert arg_count(transformer) == 1, "transformers can only take a single argument"
 
     def func(f):
-        wrapped = get_wrapped_func(f)
-
         @wraps(f)
         def inner(*args, **kwargs):
             rargs = transformer(build_call(f, *args, **kwargs))
