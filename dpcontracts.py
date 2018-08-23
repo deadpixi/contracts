@@ -49,11 +49,11 @@ works:
     3
 
 But calling with incorrect argument types (violating the contract) fails
-with an AssertionError:
+with a PreconditionError (a subtype of AssertionError):
 
     >>> add2("foo", 2)
     Traceback (most recent call last):
-    AssertionError: `i` must be an integer
+    PreconditionError: `i` must be an integer
 
 Functions can also have postconditions, specified using the `ensure`
 decorator.  Postconditions describe what must be true after the function
@@ -81,7 +81,7 @@ Except that the function is broken in unexpected ways:
 
     >>> add2(7, 4)
     Traceback (most recent call last):
-    AssertionError: the result must be greater than either `i` or `j`
+    PostconditionError: the result must be greater than either `i` or `j`
 
 The function specifying the condition doesn't have to be a lambda; it can be
 any function, and pre- and postconditions don't have to actually reference
@@ -104,10 +104,10 @@ the function's environments and effects:
     >>> add_to_database("Marvin")
     >>> add_to_database("Marvin")
     Traceback (most recent call last):
-    AssertionError: `name` must not already be in the database
+    PreconditionError: `name` must not already be in the database
     >>> add_to_database("Rob")
     Traceback (most recent call last):
-    AssertionError: the normalized version of the name must be added to the database
+    PostconditionError: the normalized version of the name must be added to the database
 
 All of the various calling conventions of Python are supported:
 
@@ -145,11 +145,11 @@ to validate arguments' types:
 
     >>> func(1.0, "foo", ExampleClass) # invalid type for `a`
     Traceback (most recent call last):
-    AssertionError: the types of arguments must be valid
+    PreconditionError: the types of arguments must be valid
 
     >>> func(1, "foo") # invalid type (the default) for `c`
     Traceback (most recent call last):
-    AssertionError: the types of arguments must be valid
+    PreconditionError: the types of arguments must be valid
 
 Contracts on Classes
 ====================
@@ -167,7 +167,7 @@ not just bare functions:
 
     >>> foo = Foo("")
     Traceback (most recent call last):
-    AssertionError: `name` should be nonempty
+    PreconditionError: `name` should be nonempty
 
 Classes may also have an additional sort of contract specified over them:
 the invariant.  An invariant, created using the `invariant` decorator,
@@ -208,11 +208,11 @@ instance of the class. For example:
     >>> nl.pop()
     >>> nl.pop()
     Traceback (most recent call last):
-    AssertionError: inner list can never be empty
+    PostconditionError: inner list can never be empty
 
     >>> nl = NonemptyList(["a", "b", "c"])
     Traceback (most recent call last):
-    AssertionError: inner list must consist only of integers
+    PostconditionError: inner list must consist only of integers
 
 Violations of invariants are ignored in the following situations:
 
@@ -251,7 +251,7 @@ For example:
     >>> x.break_everything()
     >>> x.get_always()
     Traceback (most recent call last):
-    AssertionError: `always` should be True
+    PreconditionError: `always` should be True
 
 Also note that if a method invokes another method on the same object,
 all of the invariants will be tested again:
@@ -281,7 +281,7 @@ This works well in most situations:
     6
     >>> my_func([0, -1, 2])
     Traceback (most recent call last):
-    AssertionError: every item in `l` must be > 0
+    PreconditionError: every item in `l` must be > 0
 
 But it fails in the case of a generator:
 
@@ -359,7 +359,8 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-__all__ = ["ensure", "invariant", "require", "transform", "rewrite"]
+__all__ = ["ensure", "invariant", "require", "transform", "rewrite",
+           "PreconditionError", "PostconditionError"]
 __author__ = "Rob King"
 __copyright__ = "Copyright (C) 2015-2016 Rob King"
 __license__ = "LGPL"
@@ -382,6 +383,12 @@ except ImportError: # Python 2 compatibility
         result.append({})
         result.append({})
         return tuple(result)
+
+class PreconditionError(AssertionError):
+    """An AssertionError raised due to violation of a precondition."""
+
+class PostconditionError(AssertionError):
+    """An AssertionError raised due to violation of a postcondition."""
 
 def get_wrapped_func(func):
     while hasattr(func, '__contract_wrapped_func__'):
@@ -437,16 +444,17 @@ def condition(description, predicate, precondition=False, postcondition=False, i
         def inner(*args, **kwargs):
             rargs = build_call(f, *args, **kwargs) if not instance else args[0]
 
-            if precondition:
-                assert predicate(rargs), description
+            if precondition and not predicate(rargs):
+                raise PreconditionError(description)
 
             result = f(*args, **kwargs)
 
             if instance:
-                assert predicate(rargs), description
+                if not predicate(rargs):
+                    raise PostconditionError(description)
 
-            elif postcondition:
-                assert predicate(rargs, result), description
+            elif postcondition and not predicate(rargs, result):
+                raise PostconditionError(description)
 
             return result
 
@@ -470,8 +478,6 @@ def transform(transformer):
     assert arg_count(transformer) == 1, "transformers can only take a single argument"
 
     def func(f):
-        wrapped = get_wrapped_func(f)
-
         @wraps(f)
         def inner(*args, **kwargs):
             rargs = transformer(build_call(f, *args, **kwargs))
