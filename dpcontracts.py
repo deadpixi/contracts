@@ -327,6 +327,36 @@ This works for class methods too, of course:
     >>> TestClass().my_func(iota(5))
     10
 
+Contracts on Asynchronous Functions (aka coroutine functions)
+=============================================================
+
+    >>> import asyncio
+    >>> @require("`a` is an integer", lambda args: isinstance(args.a, int))
+    ... @require("`b` is a string", lambda args: isinstance(args.b, str))
+    ... @require("every member of `c` should be a boolean",
+    ...          lambda args: all(isinstance(x, bool) for x in args.c))
+    ... async def func(a, b="Foo", *c):
+    ...     await asyncio.sleep(1)
+
+    >>> asyncio.get_event_loop().run_until_complete(
+    ...     func( 1, "foo", True, True, False))
+
+Predicates would usually be synchronous functions (as we need to enforce
+the sequence 'pre -> run -> post' for contracts) However asynchronous
+functions are supported, but they will be run sequentially:
+
+    >>> async def coropred_aisint(e):
+    ...     await asyncio.sleep(1)
+    ...     return isinstance(getattr(e, 'a'), int)
+    >>> @require("`a` is an integer", coropred_aisint)
+    ... @require("`b` is a string", lambda args: isinstance(args.b, str))
+    ... @require("every member of `c` should be a boolean",
+    ...          lambda args: all(isinstance(x, bool) for x in args.c))
+    ... async def func(a, b="Foo", *c):
+    ...     await asyncio.sleep(1)
+
+    >>> asyncio.get_event_loop().run_until_complete(func( 1, "foo", True, True, False))
+
 Contracts and Debugging
 =======================
 Contracts are a documentation and testing tool; they are not intended
@@ -370,7 +400,7 @@ __status__ = "Alpha"
 
 from collections import namedtuple
 from functools import wraps
-from inspect import isfunction, ismethod
+from inspect import isfunction, ismethod, iscoroutinefunction
 
 try:
     from inspect import getfullargspec
@@ -440,23 +470,52 @@ def condition(description, predicate, precondition=False, postcondition=False, i
     def require(f):
         wrapped = get_wrapped_func(f)
 
-        @wraps(f)
-        def inner(*args, **kwargs):
-            rargs = build_call(f, *args, **kwargs) if not instance else args[0]
+        if iscoroutinefunction(f):
+            @wraps(f)
+            async def inner(*args, **kwargs):
+                rargs = build_call(f, *args, **kwargs) if not instance else args[0]
 
-            if precondition and not predicate(rargs):
-                raise PreconditionError(description)
+                if precondition:
+                    if iscoroutinefunction(predicate):
+                        if not await predicate(rargs):
+                            raise PreconditionError(description)
+                    else:
+                        if not predicate(rargs):
+                            raise PreconditionError(description)
 
-            result = f(*args, **kwargs)
+                result = await f(*args, **kwargs)
 
-            if instance:
-                if not predicate(rargs):
+                if instance:
+                    if iscoroutinefunction(predicate):
+                        if not await predicate(rargs):
+                            raise PostconditionError(description)
+                    else:
+                        if not predicate(rargs):
+                            raise PostconditionError(description)
+
+                return result
+
+        elif isfunction(f):
+            @wraps(f)
+            def inner(*args, **kwargs):
+                rargs = build_call(f, *args, **kwargs) if not instance else args[0]
+
+                if precondition and not predicate(rargs):
+                    raise PreconditionError(description)
+
+                result = f(*args, **kwargs)
+
+                if instance:
+                    if not predicate(rargs):
+                        raise PostconditionError(description)
+
+                elif postcondition and not predicate(rargs, result):
                     raise PostconditionError(description)
 
-            elif postcondition and not predicate(rargs, result):
-                raise PostconditionError(description)
+                return result
 
-            return result
+        else:
+            raise NotImplementedError
 
         inner.__contract_wrapped_func__ = wrapped
         return inner
