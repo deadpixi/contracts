@@ -22,6 +22,19 @@ that condition.  The condition is executed automatically and passed certain
 arguments (which vary depending on the type of contract), and must return
 a boolean value: True if the condition has been met, and False otherwise.
 
+Legacy Python Support
+=====================
+This module supports versions of Python >= 3.5; that is, versions with
+support for "async def" functions.  There is a branch of this module that
+is kept compatible to the greatest possible degree for versions of Python
+earlier than 3.5 (including Python 2.7).
+
+The Python 2 and <= 3.5 branch is available at
+https://github.com/deadpixi/contracts/tree/python2
+
+That branch is a drop-in replacement for this module and includes all
+functionality except support for "async def" functions.
+
 Preconditions and Postconditions
 ================================
 Contracts on functions consist of preconditions and postconditions.
@@ -46,11 +59,11 @@ works:
     3
 
 But calling with incorrect argument types (violating the contract) fails
-with an AssertionError:
+with a PreconditionError (a subtype of AssertionError):
 
     >>> add2("foo", 2)
     Traceback (most recent call last):
-    AssertionError: `i` must be an integer
+    PreconditionError: `i` must be an integer
 
 Functions can also have postconditions, specified using the `ensure`
 decorator.  Postconditions describe what must be true after the function
@@ -78,7 +91,7 @@ Except that the function is broken in unexpected ways:
 
     >>> add2(7, 4)
     Traceback (most recent call last):
-    AssertionError: the result must be greater than either `i` or `j`
+    PostconditionError: the result must be greater than either `i` or `j`
 
 The function specifying the condition doesn't have to be a lambda; it can be
 any function, and pre- and postconditions don't have to actually reference
@@ -101,10 +114,10 @@ the function's environments and effects:
     >>> add_to_database("Marvin")
     >>> add_to_database("Marvin")
     Traceback (most recent call last):
-    AssertionError: `name` must not already be in the database
+    PreconditionError: `name` must not already be in the database
     >>> add_to_database("Rob")
     Traceback (most recent call last):
-    AssertionError: the normalized version of the name must be added to the database
+    PostconditionError: the normalized version of the name must be added to the database
 
 All of the various calling conventions of Python are supported:
 
@@ -142,11 +155,11 @@ to validate arguments' types:
 
     >>> func(1.0, "foo", ExampleClass) # invalid type for `a`
     Traceback (most recent call last):
-    AssertionError: the types of arguments must be valid
+    PreconditionError: the types of arguments must be valid
 
     >>> func(1, "foo") # invalid type (the default) for `c`
     Traceback (most recent call last):
-    AssertionError: the types of arguments must be valid
+    PreconditionError: the types of arguments must be valid
 
 Contracts on Classes
 ====================
@@ -164,7 +177,7 @@ not just bare functions:
 
     >>> foo = Foo("")
     Traceback (most recent call last):
-    AssertionError: `name` should be nonempty
+    PreconditionError: `name` should be nonempty
 
 Classes may also have an additional sort of contract specified over them:
 the invariant.  An invariant, created using the `invariant` decorator,
@@ -205,11 +218,11 @@ instance of the class. For example:
     >>> nl.pop()
     >>> nl.pop()
     Traceback (most recent call last):
-    AssertionError: inner list can never be empty
+    PostconditionError: inner list can never be empty
 
     >>> nl = NonemptyList(["a", "b", "c"])
     Traceback (most recent call last):
-    AssertionError: inner list must consist only of integers
+    PostconditionError: inner list must consist only of integers
 
 Violations of invariants are ignored in the following situations:
 
@@ -248,7 +261,7 @@ For example:
     >>> x.break_everything()
     >>> x.get_always()
     Traceback (most recent call last):
-    AssertionError: `always` should be True
+    PreconditionError: `always` should be True
 
 Also note that if a method invokes another method on the same object,
 all of the invariants will be tested again:
@@ -278,7 +291,7 @@ This works well in most situations:
     6
     >>> my_func([0, -1, 2])
     Traceback (most recent call last):
-    AssertionError: every item in `l` must be > 0
+    PreconditionError: every item in `l` must be > 0
 
 But it fails in the case of a generator:
 
@@ -323,6 +336,36 @@ This works for class methods too, of course:
     ...         return sum(l)
     >>> TestClass().my_func(iota(5))
     10
+
+Contracts on Asynchronous Functions (aka coroutine functions)
+=============================================================
+
+    >>> import asyncio
+    >>> @require("`a` is an integer", lambda args: isinstance(args.a, int))
+    ... @require("`b` is a string", lambda args: isinstance(args.b, str))
+    ... @require("every member of `c` should be a boolean",
+    ...          lambda args: all(isinstance(x, bool) for x in args.c))
+    ... async def func(a, b="Foo", *c):
+    ...     await asyncio.sleep(1)
+
+    >>> asyncio.get_event_loop().run_until_complete(
+    ...     func( 1, "foo", True, True, False))
+
+Predicates would usually be synchronous functions (as we need to enforce
+the sequence 'pre -> run -> post' for contracts) However asynchronous
+functions are supported, but they will be run sequentially:
+
+    >>> async def coropred_aisint(e):
+    ...     await asyncio.sleep(1)
+    ...     return isinstance(getattr(e, 'a'), int)
+    >>> @require("`a` is an integer", coropred_aisint)
+    ... @require("`b` is a string", lambda args: isinstance(args.b, str))
+    ... @require("every member of `c` should be a boolean",
+    ...          lambda args: all(isinstance(x, bool) for x in args.c))
+    ... async def func(a, b="Foo", *c):
+    ...     await asyncio.sleep(1)
+
+    >>> asyncio.get_event_loop().run_until_complete(func( 1, "foo", True, True, False))
 
 Contracts and Debugging
 =======================
