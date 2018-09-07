@@ -342,6 +342,7 @@ This works for class methods too, of course:
 
 Contracts on Asynchronous Functions (aka coroutine functions)
 =============================================================
+Contracts can be placed on coroutines (that is, async functions):
 
     >>> import asyncio
     >>> @require("`a` is an integer", lambda args: isinstance(args.a, int))
@@ -354,9 +355,8 @@ Contracts on Asynchronous Functions (aka coroutine functions)
     >>> asyncio.get_event_loop().run_until_complete(
     ...     func( 1, "foo", True, True, False))
 
-Predicates would usually be synchronous functions (as we need to enforce
-the sequence 'pre -> run -> post' for contracts) However asynchronous
-functions are supported, but they will be run sequentially:
+Predicates functions themselves cannot be coroutines, as this could
+influence the run loop:
 
     >>> async def coropred_aisint(e):
     ...     await asyncio.sleep(1)
@@ -367,8 +367,8 @@ functions are supported, but they will be run sequentially:
     ...          lambda args: all(isinstance(x, bool) for x in args.c))
     ... async def func(a, b="Foo", *c):
     ...     await asyncio.sleep(1)
-
-    >>> asyncio.get_event_loop().run_until_complete(func( 1, "foo", True, True, False))
+    Traceback (most recent call last):
+    AssertionError: contract predicates cannot be coroutines
 
 Contracts and Debugging
 =======================
@@ -464,6 +464,7 @@ def condition(description, predicate, precondition=False, postcondition=False, i
     assert isinstance(description, str), "contract descriptions must be strings"
     assert len(description) > 0, "contracts must have nonempty descriptions"
     assert isfunction(predicate), "contract predicates must be functions"
+    assert not iscoroutinefunction(predicate), "contract predicates cannot be coroutines"
     assert precondition or postcondition, "contracts must be at least one of pre- or post-conditional"
     assert arg_count(predicate) == (1 if precondition or instance else 2), \
            "contract predicates must take the correct number of arguments"
@@ -477,22 +478,14 @@ def condition(description, predicate, precondition=False, postcondition=False, i
                 rargs = build_call(f, *args, **kwargs) if not instance else args[0]
 
                 if precondition:
-                    if iscoroutinefunction(predicate):
-                        if not await predicate(rargs):
-                            raise PreconditionError(description)
-                    else:
-                        if not predicate(rargs):
-                            raise PreconditionError(description)
+                    if not predicate(rargs):
+                        raise PreconditionError(description)
 
                 result = await f(*args, **kwargs)
 
                 if instance:
-                    if iscoroutinefunction(predicate):
-                        if not await predicate(rargs):
-                            raise PostconditionError(description)
-                    else:
-                        if not predicate(rargs):
-                            raise PostconditionError(description)
+                    if not predicate(rargs):
+                        raise PostconditionError(description)
 
                 return result
 
