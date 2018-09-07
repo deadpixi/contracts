@@ -35,6 +35,10 @@ earlier than 3.5 (including Python 2.7).
 The Python 2 and <= 3.5 branch is available at
 https://github.com/deadpixi/contracts/tree/python2
 
+This legacy-compatible version is also distributed on PyPI along the 0.5.x
+branch; this branch will kept compatible with newer versions to the greatest
+extent possible.
+
 That branch is a drop-in replacement for this module and includes all
 functionality except support for "async def" functions.
 

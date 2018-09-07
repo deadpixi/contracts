@@ -32,6 +32,10 @@ earlier than 3.5 (including Python 2.7).
 The Python 2 and <= 3.5 branch is available at
 https://github.com/deadpixi/contracts/tree/python2
 
+This legacy-compatible version is also distributed on PyPI along the 0.5.x
+branch; this branch will kept compatible with newer versions to the greatest
+extent possible.
+
 That branch is a drop-in replacement for this module and includes all
 functionality except support for "async def" functions.
 
@@ -339,6 +343,7 @@ This works for class methods too, of course:
 
 Contracts on Asynchronous Functions (aka coroutine functions)
 =============================================================
+Contracts can be placed on coroutines (that is, async functions):
 
     >>> import asyncio
     >>> @require("`a` is an integer", lambda args: isinstance(args.a, int))
@@ -351,9 +356,8 @@ Contracts on Asynchronous Functions (aka coroutine functions)
     >>> asyncio.get_event_loop().run_until_complete(
     ...     func( 1, "foo", True, True, False))
 
-Predicates would usually be synchronous functions (as we need to enforce
-the sequence 'pre -> run -> post' for contracts) However asynchronous
-functions are supported, but they will be run sequentially:
+Predicates functions themselves cannot be coroutines, as this could
+influence the run loop:
 
     >>> async def coropred_aisint(e):
     ...     await asyncio.sleep(1)
@@ -364,8 +368,8 @@ functions are supported, but they will be run sequentially:
     ...          lambda args: all(isinstance(x, bool) for x in args.c))
     ... async def func(a, b="Foo", *c):
     ...     await asyncio.sleep(1)
-
-    >>> asyncio.get_event_loop().run_until_complete(func( 1, "foo", True, True, False))
+    Traceback (most recent call last):
+    AssertionError: contract predicates cannot be coroutines
 
 Contracts and Debugging
 =======================
