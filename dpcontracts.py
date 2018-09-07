@@ -400,19 +400,7 @@ __status__ = "Alpha"
 
 from collections import namedtuple
 from functools import wraps
-from inspect import isfunction, ismethod, iscoroutinefunction
-
-try:
-    from inspect import getfullargspec
-
-except ImportError: # Python 2 compatibility
-    from inspect import getargspec
-    def getfullargspec(f):
-        result = list(getargspec(f))
-        result.append([])
-        result.append({})
-        result.append({})
-        return tuple(result)
+from inspect import isfunction, ismethod, iscoroutinefunction, getfullargspec
 
 class PreconditionError(AssertionError):
     """An AssertionError raised due to violation of a precondition."""
