@@ -25,6 +25,19 @@ that condition.  The condition is executed automatically and passed certain
 arguments (which vary depending on the type of contract), and must return
 a boolean value: True if the condition has been met, and False otherwise.
 
+Legacy Python Support
+=====================
+This module supports versions of Python >= 3.5; that is, versions with
+support for "async def" functions.  There is a branch of this module that
+is kept compatible to the greatest possible degree for versions of Python
+earlier than 3.5 (including Python 2.7).
+
+The Python 2 and <= 3.5 branch is available at
+https://github.com/deadpixi/contracts/tree/python2
+
+That branch is a drop-in replacement for this module and includes all
+functionality except support for "async def" functions.
+
 Preconditions and Postconditions
 ================================
 Contracts on functions consist of preconditions and postconditions.
