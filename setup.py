@@ -4,7 +4,7 @@ from setuptools import setup
 import dpcontracts
 
 setup(name="dpcontracts",
-      version="0.4.0",
+      version="0.5.0",
       author="Rob King",
       author_email="jking@deadpixi.com",
       url="https://github.com/deadpixi/contracts",
