@@ -418,6 +418,10 @@ __status__ = "Alpha"
 from collections import namedtuple
 from functools import wraps
 from inspect import isfunction, ismethod, iscoroutinefunction, getfullargspec
+from sys import version_info
+
+if version_info[:2] < (3, 5):
+    raise ImportError('dpcontracts >= 0.6 requires Python 3.5 or later.')
 
 class PreconditionError(AssertionError):
     """An AssertionError raised due to violation of a precondition."""
