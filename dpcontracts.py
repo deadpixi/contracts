@@ -485,15 +485,16 @@ def condition(description, predicate, precondition=False, postcondition=False, i
             async def inner(*args, **kwargs):
                 rargs = build_call(f, *args, **kwargs) if not instance else args[0]
 
-                if precondition:
-                    if not predicate(rargs):
-                        raise PreconditionError(description)
+                if precondition and not predicate(rargs):
+                    raise PreconditionError(description)
 
                 result = await f(*args, **kwargs)
 
                 if instance:
                     if not predicate(rargs):
                         raise PostconditionError(description)
+                elif postcondition and not predicate(rargs, result):
+                    raise PostconditionError(description)
 
                 return result
 
@@ -510,7 +511,6 @@ def condition(description, predicate, precondition=False, postcondition=False, i
                 if instance:
                     if not predicate(rargs):
                         raise PostconditionError(description)
-
                 elif postcondition and not predicate(rargs, result):
                     raise PostconditionError(description)
 
