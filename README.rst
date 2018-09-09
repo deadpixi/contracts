@@ -387,7 +387,8 @@ Contact Information and Licensing
 =================================
 This module has a home page at `GitHub <https://github.com/deadpixi/contracts>`_.
 
-This module was written by Rob King (jking@deadpixi.com).
+This module was written by Rob King (jking@deadpixi.com), with contributions
+from Zac Hatfield-Dodds, Alex V, and Stanislas Bernard.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by

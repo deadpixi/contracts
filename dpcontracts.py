@@ -418,6 +418,10 @@ __status__ = "Alpha"
 from collections import namedtuple
 from functools import wraps
 from inspect import isfunction, ismethod, iscoroutinefunction, getfullargspec
+from sys import version_info
+
+if version_info[:2] < (3, 5):
+    raise ImportError('dpcontracts >= 0.6 requires Python 3.5 or later.')
 
 class PreconditionError(AssertionError):
     """An AssertionError raised due to violation of a precondition."""
@@ -481,15 +485,16 @@ def condition(description, predicate, precondition=False, postcondition=False, i
             async def inner(*args, **kwargs):
                 rargs = build_call(f, *args, **kwargs) if not instance else args[0]
 
-                if precondition:
-                    if not predicate(rargs):
-                        raise PreconditionError(description)
+                if precondition and not predicate(rargs):
+                    raise PreconditionError(description)
 
                 result = await f(*args, **kwargs)
 
                 if instance:
                     if not predicate(rargs):
                         raise PostconditionError(description)
+                elif postcondition and not predicate(rargs, result):
+                    raise PostconditionError(description)
 
                 return result
 
@@ -506,7 +511,6 @@ def condition(description, predicate, precondition=False, postcondition=False, i
                 if instance:
                     if not predicate(rargs):
                         raise PostconditionError(description)
-
                 elif postcondition and not predicate(rargs, result):
                     raise PostconditionError(description)
 
