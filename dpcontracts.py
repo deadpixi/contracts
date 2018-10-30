@@ -277,6 +277,31 @@ all of the invariants will be tested again:
     >>> nl.as_string() == '1,2,3'
     True
 
+Preserving Old Values
+=====================
+Sometimes it's important to be able to compare the results of a function with the
+previous state of the program. Earlier states can be preserved using the
+`preserve` decorator:
+
+    >>> class Counter:
+    ...     def __init__(self, initial_value):
+    ...         self.value = initial_value
+    ...
+    ...     @preserve(lambda args: {"old_value": args.self.value})
+    ...     @require("value > 0", lambda args: args.value > 0)
+    ...     @ensure("counter is incremented by value",
+    ...             lambda args, res, old: args.self.value == old.old_value + args.value)
+    ...     def increment(self, value):
+    ...         if value == 9:
+    ...             self.value += 2 # broken for purposes of example
+    ...         self.value += value
+
+    >>> counter = Counter(100)
+    >>> counter.increment(10)
+    >>> counter.increment(9)
+    Traceback (most recent call last):
+    PostconditionError: counter is incremented by value
+
 Transforming Data in Contracts
 ==============================
 In general, you should avoid transforming data inside a contract; contracts
@@ -407,7 +432,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 __all__ = ["ensure", "invariant", "require", "transform", "rewrite",
-           "PreconditionError", "PostconditionError"]
+           "preserve", "PreconditionError", "PostconditionError"]
 __author__ = "Rob King"
 __copyright__ = "Copyright (C) 2015-2016 Rob King"
 __license__ = "LGPL"
@@ -462,7 +487,11 @@ def build_call(func, *args, **kwargs):
         if value is nonce:
             raise TypeError("%s missing required positional argument: '%s'" % (func.__name__, name))
 
-    return namedtuple('Args', actual.keys())(**actual)
+    return tuple_of_dict(actual)
+
+def tuple_of_dict(dictionary, name="Args"):
+    assert isinstance(dictionary, dict), "dictionary must be a dict instance"
+    return namedtuple(name, dictionary.keys())(**dictionary)
 
 def arg_count(func):
     named, vargs, _, defs, kwonly, kwonlydefs, _ = getfullargspec(func)
@@ -474,8 +503,10 @@ def condition(description, predicate, precondition=False, postcondition=False, i
     assert isfunction(predicate), "contract predicates must be functions"
     assert not iscoroutinefunction(predicate), "contract predicates cannot be coroutines"
     assert precondition or postcondition, "contracts must be at least one of pre- or post-conditional"
-    assert arg_count(predicate) == (1 if precondition or instance else 2), \
-           "contract predicates must take the correct number of arguments"
+    if instance or precondition:
+        assert arg_count(predicate) == 1, "invariant predicates must take one argument"
+    elif postcondition:
+        assert arg_count(predicate) in (2, 3), "postcondition predicates must take two or three arguments"
 
     def require(f):
         wrapped = get_wrapped_func(f)
@@ -488,13 +519,22 @@ def condition(description, predicate, precondition=False, postcondition=False, i
                 if precondition and not predicate(rargs):
                     raise PreconditionError(description)
 
+                preserved_values = {}
+                for preserver in getattr(wrapped, "__contract_preserver__", [lambda x: {}]):
+                    preserved_values.update(preserver(rargs))
                 result = await f(*args, **kwargs)
 
                 if instance:
                     if not predicate(rargs):
                         raise PostconditionError(description)
-                elif postcondition and not predicate(rargs, result):
-                    raise PostconditionError(description)
+                elif postcondition:
+                    check = None
+                    if arg_count(predicate) == 3:
+                        check = predicate(rargs, result, tuple_of_dict(preserved_values))
+                    else:
+                        check = predicate(rargs, result)
+                    if not check:
+                        raise PostconditionError(description)
 
                 return result
 
@@ -506,13 +546,22 @@ def condition(description, predicate, precondition=False, postcondition=False, i
                 if precondition and not predicate(rargs):
                     raise PreconditionError(description)
 
+                preserved_values = {}
+                for preserver in getattr(wrapped, "__contract_preserver__", [lambda x: {}]):
+                    preserved_values.update(preserver(rargs))
                 result = f(*args, **kwargs)
 
                 if instance:
                     if not predicate(rargs):
                         raise PostconditionError(description)
-                elif postcondition and not predicate(rargs, result):
-                    raise PostconditionError(description)
+                elif postcondition:
+                    check = None
+                    if arg_count(predicate) == 3:
+                        check = predicate(rargs, result, tuple_of_dict(preserved_values))
+                    else:
+                        check = predicate(rargs, result)
+                    if not check:
+                        raise PostconditionError(description)
 
                 return result
 
@@ -534,6 +583,21 @@ def require(description, predicate):
 def rewrite(args, **kwargs):
     return args._replace(**kwargs)
 
+def preserve(preserver):
+    assert isfunction(preserver), "preservers must be functions"
+    assert arg_count(preserver) == 1, "preservers can only take a single argument"
+
+    def func(f):
+        wrapped = get_wrapped_func(f)
+        @wraps(f)
+        def inner(*args, **kwargs):
+            return f(*args, **kwargs)
+        if not hasattr(wrapped, "__contract_preserver__"):
+            wrapped.__contract_preserver__ = []
+        wrapped.__contract_preserver__.append(preserver)
+        return inner
+    return func
+            
 def transform(transformer):
     assert isfunction(transformer), "transformers must be functions"
     assert arg_count(transformer) == 1, "transformers can only take a single argument"
@@ -623,6 +687,11 @@ if not __debug__:
         return func
 
     def transform(transformer):
+        def func(c):
+            return c
+        return func
+
+    def preserve(preserver):
         def func(c):
             return c
         return func
