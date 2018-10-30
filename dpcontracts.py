@@ -278,6 +278,60 @@ all of the invariants will be tested again:
     >>> nl.as_string() == '1,2,3'
     True
 
+Automatically Generated Descriptions
+====================================
+Some might find that providing a human-readable description for a contract
+in addition to a function implementing that contract is a bit too verbose.
+
+For the `require`, `ensure`, and `invariant` decorators, a single-argument
+version exists. If only a function is passed in, a description will be
+automatically generated based on the code of that function:
+
+    >>> import math
+    >>> @require("x must be an integer", lambda args: isinstance(args.x, int))
+    ... @require(lambda args: args.x > 0)
+    ... @ensure("result must be a float", lambda args, result: isinstance(result, float))
+    ... def square_root(x):
+    ...     return math.sqrt(x)
+    >>> square_root(-1)
+    Traceback (most recent call last):
+    PreconditionError: @require(lambda args: args.x > 0) failed
+
+This is true for postconditions as well:
+
+    >>> @ensure(lambda args, result: result > 0)
+    ... def sub(x, y):
+    ...     return x - y
+    >>> sub(10, 100)
+    Traceback (most recent call last):
+    PostconditionError: @ensure(lambda args, result: result > 0) failed
+
+And of course for invariants:
+
+    >>> @invariant(lambda self: self.counter >= 0)
+    ... class Counter:
+    ...     def __init__(self, initial_value):
+    ...         self.counter = initial_value
+    ...     def increment(self, value):
+    ...         self.counter += value
+    >>> counter = Counter(10)
+    >>> counter.increment(-100)
+    Traceback (most recent call last):
+    PostconditionError: @invariant(lambda self: self.counter >= 0) failed
+
+Tests can span more than one line as well:
+
+    >>> @ensure(lambda args, result: result < 1000)
+    ... @ensure(lambda args, result: all([
+    ...     result > 0]))
+    ... @ensure(lambda args, result: isinstance(result, int))
+    ... def sub2(x, y):
+    ...     return x - y
+    >>> sub2(10, 100)
+    Traceback (most recent call last):
+    PostconditionError: @ensure(lambda args, result: all([
+        result > 0])) failed
+
 Preserving Old Values
 =====================
 Sometimes it's important to be able to compare the results of a function with the
@@ -444,9 +498,10 @@ __version__ = "$Id$"
 __email__ = "jking@deadpixi.com"
 __status__ = "Alpha"
 
+from ast import parse
 from collections import namedtuple
 from functools import wraps
-from inspect import isfunction, ismethod, iscoroutinefunction, getfullargspec
+from inspect import isfunction, ismethod, iscoroutinefunction, getfullargspec, getsource
 from sys import version_info
 
 if version_info[:2] < (3, 5):
@@ -457,6 +512,23 @@ class PreconditionError(AssertionError):
 
 class PostconditionError(AssertionError):
     """An AssertionError raised due to violation of a postcondition."""
+
+def get_function_source(func):
+    try:
+        source = getsource(func)
+        tree = parse(source)
+        decorators = tree.body[0].decorator_list
+        function = tree.body[0]
+        first_line = decorators[0].lineno
+        following_line = first_line + 1
+        if len(decorators) > 1:
+            following_line = decorators[1].lineno
+        elif len(function.body) > 0:
+            following_line = function.body[0].lineno - 1
+        return "\n".join(source.split("\n")[first_line - 1:following_line - first_line]) + " failed"
+
+    except (SyntaxError, OSError):
+        return str(func)
 
 def get_wrapped_func(func):
     while hasattr(func, '__contract_wrapped_func__'):
@@ -576,11 +648,23 @@ def condition(description, predicate, precondition=False, postcondition=False, i
         return inner
     return require
 
-def require(description, predicate):
+def require(arg1, arg2=None):
     """
     Specify a precondition described by `description` and tested by
     `predicate`.
     """
+
+    assert (isinstance(arg1, str) and isfunction(arg2)) or (isfunction(arg1) and arg2 is None)
+
+    description = ""
+    predicate = lambda x: x
+
+    if isinstance(arg1, str):
+        description = arg1
+        predicate = arg2
+    else:
+        description = get_function_source(arg1)
+        predicate = arg1
 
     return condition(description, predicate, True, False)
 
@@ -634,19 +718,41 @@ def types(**requirements):
 
     return condition("the types of arguments must be valid", predicate, True)
 
-def ensure(description, predicate):
+def ensure(arg1, arg2=None):
     """
     Specify a precondition described by `description` and tested by
     `predicate`.
     """
 
+    assert (isinstance(arg1, str) and isfunction(arg2)) or (isfunction(arg1) and arg2 is None)
+
+    description = ""
+    predicate = lambda x: x
+
+    if isinstance(arg1, str):
+        description = arg1
+        predicate = arg2
+    else:
+        description = get_function_source(arg1)
+        predicate = arg1
+
     return condition(description, predicate, False, True)
 
-def invariant(desc, predicate):
+def invariant(arg1, arg2=None):
     """
     Specify a class invariant described by `descriptuon` and tested
     by `predicate`.
     """
+
+    desc = ""
+    predicate = lambda x: x
+
+    if isinstance(arg1, str):
+        desc = arg1
+        predicate = arg2
+    else:
+        desc = get_function_source(arg1)
+        predicate = arg1
 
     def invariant(c):
         def check(name, func):
