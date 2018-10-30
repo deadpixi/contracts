@@ -39,8 +39,9 @@ This legacy-compatible version is also distributed on PyPI along the 0.5.x
 branch; this branch will kept compatible with newer versions to the greatest
 extent possible.
 
-That branch is a drop-in replacement for this module and includes all
-functionality except support for "async def" functions.
+That branch is a drop-in replacement for this module and includes most
+of the functionality, except support for "async def" functions and a few
+other things.
 
 Preconditions and Postconditions
 ================================
@@ -302,6 +303,9 @@ previous state of the program. Earlier states can be preserved using the
     Traceback (most recent call last):
     PostconditionError: counter is incremented by value
 
+Note that Python's pass-by-reference semantics still apply, so if you need to
+preserve an old value, you might have to copy it.
+
 Transforming Data in Contracts
 ==============================
 In general, you should avoid transforming data inside a contract; contracts
@@ -434,7 +438,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __all__ = ["ensure", "invariant", "require", "transform", "rewrite",
            "preserve", "PreconditionError", "PostconditionError"]
 __author__ = "Rob King"
-__copyright__ = "Copyright (C) 2015-2016 Rob King"
+__copyright__ = "Copyright (C) 2015-2018 Rob King"
 __license__ = "LGPL"
 __version__ = "$Id$"
 __email__ = "jking@deadpixi.com"

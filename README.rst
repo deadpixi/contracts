@@ -36,8 +36,9 @@ This legacy-compatible version is also distributed on PyPI along the 0.5.x
 branch; this branch will kept compatible with newer versions to the greatest
 extent possible.
 
-That branch is a drop-in replacement for this module and includes all
-functionality except support for "async def" functions.
+That branch is a drop-in replacement for this module and includes most
+of the functionality, except support for "async def" functions and a few
+other things.
 
 Preconditions and Postconditions
 ================================
@@ -274,6 +275,34 @@ all of the invariants will be tested again:
     >>> nl.as_string() == '1,2,3'
     True
 
+Preserving Old Values
+=====================
+Sometimes it's important to be able to compare the results of a function with the
+previous state of the program. Earlier states can be preserved using the
+`preserve` decorator:
+
+    >>> class Counter:
+    ...     def __init__(self, initial_value):
+    ...         self.value = initial_value
+    ...
+    ...     @preserve(lambda args: {"old_value": args.self.value})
+    ...     @require("value > 0", lambda args: args.value > 0)
+    ...     @ensure("counter is incremented by value",
+    ...             lambda args, res, old: args.self.value == old.old_value + args.value)
+    ...     def increment(self, value):
+    ...         if value == 9:
+    ...             self.value += 2 # broken for purposes of example
+    ...         self.value += value
+
+    >>> counter = Counter(100)
+    >>> counter.increment(10)
+    >>> counter.increment(9)
+    Traceback (most recent call last):
+    PostconditionError: counter is incremented by value
+
+Note that Python's pass-by-reference semantics still apply, so if you need to
+preserve an old value, you might have to copy it.
+
 Transforming Data in Contracts
 ==============================
 In general, you should avoid transforming data inside a contract; contracts
@@ -387,8 +416,7 @@ Contact Information and Licensing
 =================================
 This module has a home page at `GitHub <https://github.com/deadpixi/contracts>`_.
 
-This module was written by Rob King (jking@deadpixi.com), with contributions
-from Zac Hatfield-Dodds, Alex V, and Stanislas Bernard.
+This module was written by Rob King (jking@deadpixi.com).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
