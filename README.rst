@@ -275,6 +275,60 @@ all of the invariants will be tested again:
     >>> nl.as_string() == '1,2,3'
     True
 
+Automatically Generated Descriptions
+====================================
+Some might find that providing a human-readable description for a contract
+in addition to a function implementing that contract is a bit too verbose.
+
+For the `require`, `ensure`, and `invariant` decorators, a single-argument
+version exists. If only a function is passed in, a description will be
+automatically generated based on the code of that function:
+
+    >>> import math
+    >>> @require("x must be an integer", lambda args: isinstance(args.x, int))
+    ... @require(lambda args: args.x > 0)
+    ... @ensure("result must be a float", lambda args, result: isinstance(result, float))
+    ... def square_root(x):
+    ...     return math.sqrt(x)
+    >>> square_root(-1)
+    Traceback (most recent call last):
+    PreconditionError: @require(lambda args: args.x > 0) failed
+
+This is true for postconditions as well:
+
+    >>> @ensure(lambda args, result: result > 0)
+    ... def sub(x, y):
+    ...     return x - y
+    >>> sub(10, 100)
+    Traceback (most recent call last):
+    PostconditionError: @ensure(lambda args, result: result > 0) failed
+
+And of course for invariants:
+
+    >>> @invariant(lambda self: self.counter >= 0)
+    ... class Counter:
+    ...     def __init__(self, initial_value):
+    ...         self.counter = initial_value
+    ...     def increment(self, value):
+    ...         self.counter += value
+    >>> counter = Counter(10)
+    >>> counter.increment(-100)
+    Traceback (most recent call last):
+    PostconditionError: @invariant(lambda self: self.counter >= 0) failed
+
+Tests can span more than one line as well:
+
+    >>> @ensure(lambda args, result: result < 1000)
+    ... @ensure(lambda args, result: all([
+    ...     result > 0]))
+    ... @ensure(lambda args, result: isinstance(result, int))
+    ... def sub2(x, y):
+    ...     return x - y
+    >>> sub2(10, 100)
+    Traceback (most recent call last):
+    PostconditionError: @ensure(lambda args, result: all([
+        result > 0])) failed
+
 Preserving Old Values
 =====================
 Sometimes it's important to be able to compare the results of a function with the
