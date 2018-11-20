@@ -29,8 +29,8 @@ Legacy Python Support
 =====================
 This module supports versions of Python >= 3.5; that is, versions with
 support for "async def" functions.  There is a branch of this module that
-is kept compatible to the greatest possible degree for versions of Python
-earlier than 3.5 (including Python 2.7).
+is in maintenance mode for versions of Python earlier than 3.5
+(including Python 2.7).
 
 The Python 2 and <= 3.5 branch is available at
 https://github.com/deadpixi/contracts/tree/python2
