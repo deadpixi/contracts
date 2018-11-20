@@ -1,0 +1,19 @@
+language: python
+
+python:
+  - 3.5
+  - 3.6
+  - 3.7
+  - 3.8
+  - pypy3
+
+before_install:
+
+install:
+  - pip install tox tox-travis
+
+script:
+  - tox
+
+notifications:
+  email: false

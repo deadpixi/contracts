@@ -42,10 +42,13 @@ other things.
 
 Preconditions and Postconditions
 ================================
+
+    >>> from dpcontracts import require, ensure
+
 Contracts on functions consist of preconditions and postconditions.
-A precondition is declared using the `requires` decorator, and describes
+A precondition is declared using the ``requires`` decorator, and describes
 what must be true upon entrance to the function. The condition function
-is passed an arguments object, which as as its attributes the arguments
+is passed an arguments object, which has as its attributes the arguments
 to the decorated function:
 
     >>> @require("`i` must be an integer", lambda args: isinstance(args.i, int))
@@ -57,22 +60,22 @@ Note that an arbitrary number of preconditions can be stacked on top of
 each other.
 
 These decorators have declared that the types of both arguments must be
-integers.  Calling the `add2` function with the correct types of arguments
+integers.  Calling the ``add2`` function with the correct types of arguments
 works:
 
     >>> add2(1, 2)
     3
 
 But calling with incorrect argument types (violating the contract) fails
-with a PreconditionError (a subtype of AssertionError):
+with a ``PreconditionError`` (a subtype of ``AssertionError``):
 
     >>> add2("foo", 2)
     Traceback (most recent call last):
-    PreconditionError: `i` must be an integer
+    dpcontracts.PreconditionError: `i` must be an integer
 
-Functions can also have postconditions, specified using the `ensure`
+Functions can also have postconditions, specified using the ``ensure``
 decorator.  Postconditions describe what must be true after the function
-has successfully returned.  Like the `require` decorator, the `ensure`
+has successfully returned.  Like the ``require`` decorator, the ``ensure``
 decorator is passed an argument object.  It is also passed an additional
 argument, which is the result of the function invocation.  For example:
 
@@ -96,7 +99,7 @@ Except that the function is broken in unexpected ways:
 
     >>> add2(7, 4)
     Traceback (most recent call last):
-    PostconditionError: the result must be greater than either `i` or `j`
+    dpcontracts.PostconditionError: the result must be greater than either `i` or `j`
 
 The function specifying the condition doesn't have to be a lambda; it can be
 any function, and pre- and postconditions don't have to actually reference
@@ -119,10 +122,10 @@ the function's environments and effects:
     >>> add_to_database("Marvin")
     >>> add_to_database("Marvin")
     Traceback (most recent call last):
-    PreconditionError: `name` must not already be in the database
+    dpcontracts.PreconditionError: `name` must not already be in the database
     >>> add_to_database("Rob")
     Traceback (most recent call last):
-    PostconditionError: the normalized version of the name must be added to the database
+    dpcontracts.PostconditionError: the normalized version of the name must be added to the database
 
 All of the various calling conventions of Python are supported:
 
@@ -144,8 +147,10 @@ All of the various calling conventions of Python are supported:
     >>> func(10)
 
 A common contract is to validate the types of arguments. To that end,
-there is an additional decorator, `types`, that can be used
+there is an additional decorator, ``types``, that can be used
 to validate arguments' types:
+
+    >>> from dpcontracts import types
 
     >>> class ExampleClass:
     ...     pass
@@ -160,15 +165,15 @@ to validate arguments' types:
 
     >>> func(1.0, "foo", ExampleClass) # invalid type for `a`
     Traceback (most recent call last):
-    PreconditionError: the types of arguments must be valid
+    dpcontracts.PreconditionError: the types of arguments must be valid
 
     >>> func(1, "foo") # invalid type (the default) for `c`
     Traceback (most recent call last):
-    PreconditionError: the types of arguments must be valid
+    dpcontracts.PreconditionError: the types of arguments must be valid
 
 Contracts on Classes
 ====================
-The `require` and `ensure` decorators can be used on class methods too,
+The ``require`` and ``ensure`` decorators can be used on class methods too,
 not just bare functions:
 
     >>> class Foo:
@@ -182,14 +187,16 @@ not just bare functions:
 
     >>> foo = Foo("")
     Traceback (most recent call last):
-    PreconditionError: `name` should be nonempty
+    dpcontracts.PreconditionError: `name` should be nonempty
 
 Classes may also have an additional sort of contract specified over them:
-the invariant.  An invariant, created using the `invariant` decorator,
+the invariant.  An invariant, created using the ``invariant`` decorator,
 specifies a condition that must always be true for instances of that class.
 In this case, "always" means "before invocation of any method and after
 its return" -- methods are allowed to violate invariants so long as they
 are restored prior to return.
+
+    >>> from dpcontracts import invariant
 
 Invariant contracts are passed a single variable, a reference to the
 instance of the class. For example:
@@ -223,29 +230,29 @@ instance of the class. For example:
     >>> nl.pop()
     >>> nl.pop()
     Traceback (most recent call last):
-    PostconditionError: inner list can never be empty
+    dpcontracts.PostconditionError: inner list can never be empty
 
     >>> nl = NonemptyList(["a", "b", "c"])
     Traceback (most recent call last):
-    PostconditionError: inner list must consist only of integers
+    dpcontracts.PostconditionError: inner list must consist only of integers
 
 Violations of invariants are ignored in the following situations:
 
-    - before calls to __init__ and __new__ (since the object is still
-      being initialized)
+- before calls to ``__init__`` and ``__new__`` (since the object is still
+  being initialized)
 
-    - before and after calls to any method whose name begins with "__",
-      except for methods implementing arithmetic and comparison operations
-      and container type emulation (because such methods are private and
-      expected to manipulate the object's inner state, plus things get hairy
-      with certain applications of `__getattr(ibute)?__`)
+- before and after calls to any method whose name begins with "__",
+  except for methods implementing arithmetic and comparison operations
+  and container type emulation (because such methods are private and
+  expected to manipulate the object's inner state, plus things get hairy
+  with certain applications of ``__getattr(ibute)?__``)
 
-    - before and after calls to methods added from outside the initial
-      class definition (because invariants are processed only at class
-      definition time)
+- before and after calls to methods added from outside the initial
+  class definition (because invariants are processed only at class
+  definition time)
 
-    - before and after calls to classmethods, since they apply to the class
-      as a whole and not any particular instance
+- before and after calls to classmethods, since they apply to the class
+  as a whole and not any particular instance
 
 For example:
 
@@ -266,7 +273,7 @@ For example:
     >>> x.break_everything()
     >>> x.get_always()
     Traceback (most recent call last):
-    PreconditionError: `always` should be True
+    dpcontracts.PreconditionError: `always` should be True
 
 Also note that if a method invokes another method on the same object,
 all of the invariants will be tested again:
@@ -378,7 +385,7 @@ This works well in most situations:
     6
     >>> my_func([0, -1, 2])
     Traceback (most recent call last):
-    PreconditionError: every item in `l` must be > 0
+    dpcontracts.PreconditionError: every item in `l` must be > 0
 
 But it fails in the case of a generator:
 
@@ -391,16 +398,18 @@ But it fails in the case of a generator:
     >>> my_func(iota(5))
     0
 
-The call to `my_func` has a result of 0 because the generator was consumed
-inside the `all` call inside the contract. Obviously, this is problematic.
+The call to ``my_func`` has a result of 0 because the generator was consumed
+inside the ``all`` call inside the contract. Obviously, this is problematic.
 
 Sadly, there is no generic solution to this problem. In a statically-typed
 language, the compiler can verify that some properties of infinite lists
 (though not all of them, and what exactly depends on the type system).
 
 We get around that limitation here using an additional decorator, called
-`transform` that transforms the arguments to a function, and a function
-called `rewrite` that rewrites argument tuples.
+``transform`` that transforms the arguments to a function, and a function
+called ``rewrite`` that rewrites argument tuples.
+
+    >>> from dpcontracts import transform, rewrite
 
 For example:
 
@@ -458,7 +467,7 @@ Contracts and Debugging
 =======================
 Contracts are a documentation and testing tool; they are not intended
 to be used to validate user input or implement program logic.  Indeed,
-running Python with `__debug__` set to False (e.g. by calling the Python
+running Python with ``__debug__`` set to False (e.g. by calling the Python
 intrepreter with the "-O" option) disables contracts.
 
 Testing This Module

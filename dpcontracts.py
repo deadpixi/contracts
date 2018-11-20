@@ -462,7 +462,7 @@ Contracts and Debugging
 Contracts are a documentation and testing tool; they are not intended
 to be used to validate user input or implement program logic.  Indeed,
 running Python with `__debug__` set to False (e.g. by calling the Python
-intrepreter with the "-O" option) disables contracts.
+interpreter with the "-O" option) disables contracts.
 
 Testing This Module
 ===================
@@ -740,7 +740,7 @@ def ensure(arg1, arg2=None):
 
 def invariant(arg1, arg2=None):
     """
-    Specify a class invariant described by `descriptuon` and tested
+    Specify a class invariant described by `description` and tested
     by `predicate`.
     """
 
